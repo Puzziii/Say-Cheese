@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Say Cheese 📸</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: #0f0f0f;
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        p.subtitle {
+            color: #888;
+            margin-bottom: 2rem;
+        }
+
+        #upload-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        button {
+            background: #f5c518;
+            color: #000;
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #e6b800;
+        }
+
+        #results-section {
+            width: 100%;
+            max-width: 600px;
+        }
+
+        #scene-title {
+            font-size: 1.25rem;
+            margin-bottom: 1.5rem;
+            color: #f5c518;
+        }
+
+        .pose-card {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+        }
+
+        .pose-card h3 {
+            margin-bottom: 0.5rem;
+            color: #f5c518;
+        }
+
+        .pose-card p {
+            color: #aaa;
+            margin-bottom: 0.75rem;
+            font-size: 0.9rem;
+        }
+
+        .pose-card ol {
+            padding-left: 1.25rem;
+            color: #ccc;
+            font-size: 0.9rem;
+            line-height: 1.8;
+        }
+    </style>
+</head>
+<body>
+    <h1>Say Cheese 📸</h1>
+    <p class="subtitle">Upload a photo and get pose suggestions based on your scene</p>
+
+    <div id="upload-section">
+        <input type="file" id="fileInput" accept="image/jpeg, image/png, image/webp" />
+        <button onclick="analyze()">Analyze</button>
+    </div>
+
+    <div id="results-section" style="display:none;">
+        <h2 id="scene-title"></h2>
+        <div id="poses-container"></div>
+    </div>
+
+    <script>
+        async function analyze() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert('Please select an image first!');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const resultsSection = document.getElementById('results-section');
+            const sceneTitle = document.getElementById('scene-title');
+            const posesContainer = document.getElementById('poses-container');
+
+            sceneTitle.textContent = 'Analyzing...';
+            resultsSection.style.display = 'block';
+            posesContainer.innerHTML = '';
+
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                sceneTitle.textContent = data.scene.scene_emoji + ' ' + data.scene.scene + ' — ' + data.scene.mood;
+
+                data.poses.forEach((pose, i) => {
+                    const steps = pose.steps.map(s => `<li>${s}</li>`).join('');
+                    posesContainer.innerHTML += `
+                        <div class="pose-card">
+                            <h3>Pose ${i + 1}: ${pose.name}</h3>
+                            <p>${pose.description}</p>
+                            <ol>${steps}</ol>
+                        </div>
+                    `;
+                });
+
+            } catch (err) {
+                sceneTitle.textContent = 'Something went wrong. Try again.';
+            }
+        }
+    </script>
+</body>
+</html>
