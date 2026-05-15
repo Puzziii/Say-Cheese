@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 from routes.analyze import router 
 
 load_dotenv()
-
 app = FastAPI(title="Say Cheese")
 
 app.include_router(router,prefix="/api")
