@@ -91,16 +91,33 @@
             font-size: 0.9rem;
             line-height: 1.8;
         }
+
+    #camera-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    #video {
+        width: 100%;
+        max-width: 600px;
+        border-radius: 12px;
+        margin-bottom: 1rem;
+    }
+
     </style>
 </head>
 <body>
     <h1>Say Cheese 📸</h1>
     <p class="subtitle">Upload a photo and get pose suggestions based on your scene</p>
 
-    <div id="upload-section">
-        <input type="file" id="fileInput" accept="image/jpeg, image/png, image/webp" />
-        <button onclick="analyze()">Analyze</button>
-    </div>
+    <div id="camera-section">
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+    <button onclick="capture()">📸 Capture & Analyze</button>
+</div>
 
     <div id="results-section" style="display:none;">
         <h2 id="scene-title"></h2>
@@ -108,51 +125,61 @@
     </div>
 
     <script>
-        async function analyze() {
-            const fileInput = document.getElementById('fileInput');
-            const file = fileInput.files[0];
+        async function startCamera() {
+    const video = document.getElementById('video');
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    video.srcObject = stream;
+}
 
-            if (!file) {
-                alert('Please select an image first!');
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append('file', file);
-
-            const resultsSection = document.getElementById('results-section');
-            const sceneTitle = document.getElementById('scene-title');
-            const posesContainer = document.getElementById('poses-container');
-
-            sceneTitle.textContent = 'Analyzing...';
-            resultsSection.style.display = 'block';
-            posesContainer.innerHTML = '';
-
-            try {
-                const response = await fetch('/api/analyze', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const data = await response.json();
-
-                sceneTitle.textContent = data.scene.scene_emoji + ' ' + data.scene.scene + ' — ' + data.scene.mood;
-
-                data.poses.forEach((pose, i) => {
-                    const steps = pose.steps.map(s => `<li>${s}</li>`).join('');
-                    posesContainer.innerHTML += `
-                        <div class="pose-card">
-                            <h3>Pose ${i + 1}: ${pose.name}</h3>
-                            <p>${pose.description}</p>
-                            <ol>${steps}</ol>
-                        </div>
-                    `;
-                });
-
-            } catch (err) {
-                sceneTitle.textContent = 'Something went wrong. Try again.';
-            }
+async function capture() {
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    
+    canvas.toBlob(async (blob) => {
+        const formData = new FormData();
+        formData.append('file', blob, 'capture.jpg');
+        
+        const resultsSection = document.getElementById('results-section');
+        const sceneTitle = document.getElementById('scene-title');
+        const posesContainer = document.getElementById('poses-container');
+        
+        sceneTitle.textContent = 'Analyzing...';
+        resultsSection.style.display = 'block';
+        posesContainer.innerHTML = '';
+        
+        try {
+            const response = await fetch('/api/analyze', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            sceneTitle.textContent = data.scene.scene_emoji + ' ' + data.scene.scene + ' — ' + data.scene.mood;
+            
+            data.poses.forEach((pose, i) => {
+                const steps = pose.steps.map(s => `<li>${s}</li>`).join('');
+                posesContainer.innerHTML += `
+                    <div class="pose-card">
+                        <h3>Pose ${i + 1}: ${pose.name}</h3>
+                        <p>${pose.description}</p>
+                        <ol>${steps}</ol>
+                    </div>
+                `;
+            });
+            
+        } catch (err) {
+            sceneTitle.textContent = 'Something went wrong. Try again.';
         }
-    </script>
+    }, 'image/jpeg');
+}
+
+startCamera();
+</script>
 </body>
 </html>
